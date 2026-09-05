@@ -372,7 +372,7 @@ input.bad,select.bad{border-color:var(--danger);box-shadow:0 0 0 3px rgba(179,69
         <div class="fw"><label>المدرسة</label><select id="fSchool"></select></div>
         <div class="fw"><label>سبب الزيارة</label><select id="fReason"></select></div>
         <div class="fw"><label>مستوى المدرسة</label><select id="fLevel"></select></div>
-        <div class="fw"><label>المرحلة</label><select id="fStage"></select></div>
+        <div class="fw"><label>نتيجة التقويم</label><select id="fStage"></select></div>
         <button class="btn ghost sm" id="btnClearF">مسح التصفية</button>
       </div>
 
@@ -412,8 +412,8 @@ input.bad,select.bad{border-color:var(--danger);box-shadow:0 0 0 3px rgba(179,69
 
       <div class="charts">
         <div class="card pad chart">
-          <h4>مراحل تقدم المدارس</h4>
-          <div class="cap">توزيع الزيارات على مراحل التقدم</div>
+          <h4>نتائج التقويم</h4>
+          <div class="cap">توزيع الزيارات على نتائج التقويم</div>
           <div class="hbars" id="chStages"></div>
         </div>
         <div class="card pad chart">
@@ -469,7 +469,7 @@ input.bad,select.bad{border-color:var(--danger);box-shadow:0 0 0 3px rgba(179,69
               <select id="rLevel"></select>
             </div>
             <div class="fld">
-              <label class="f" for="rStage">المرحلة</label>
+              <label class="f" for="rStage">نتيجة التقويم</label>
               <select id="rStage" disabled></select>
               <div class="hint" id="stageHint">اختر الدورة أولاً</div>
             </div>
@@ -866,7 +866,7 @@ function fillSelects(){
 
   for(const [sel, arr, ph] of [
     ["#fSchool", schoolNames, "كل المدارس"], ["#fReason", REASONS, "كل الأسباب"],
-    ["#fLevel", LEVELS, "كل المستويات"], ["#fStage", STAGES, "كل المراحل"],
+    ["#fLevel", LEVELS, "كل المستويات"], ["#fStage", STAGES, "كل النتائج"],
     ["#qSchool", schoolNames, "كل المدارس"],
     ["#qReason", REASONS, "كل الأسباب"], ["#qStatus", STATUSES, "كل الأوصاف"]
   ]){
@@ -917,7 +917,7 @@ function readForm(){
     supervisor: S.user?.name || CONFIG.supervisorName
   };
 }
-// المرحلة فرع من الدورة: نفس الخيارات الأربعة تحت كل دورة،
+// نتيجة التقويم فرع من الدورة: نفس الخيارات الأربعة تحت كل دورة،
 // وتبقى مقفلة حتى تُختار الدورة
 function syncStage(){
   const has = !!$("#rLevel").value;
@@ -1144,7 +1144,7 @@ function viewReport(id){
       <div class="rv">
         ${item("سبب الزيارة", r.reason)}
         ${item("مستوى المدرسة", r.level)}
-        ${item("المرحلة", r.stage)}
+        ${item("نتيجة التقويم", r.stage)}
         ${item("محور الملاحظات", r.noteType)}
         ${item("المشرف", r.supervisor)}
         ${item("تفاصيل الملاحظة", r.noteText, true)}
@@ -1193,7 +1193,7 @@ function wordBlock(r){
     ${row("نوع الزيارة", r.visitType)}
     ${row("سبب الزيارة", r.reason)}
     ${row("مستوى المدرسة", r.level)}
-    ${row("المرحلة", r.stage)}
+    ${row("نتيجة التقويم", r.stage)}
     ${row("الوصف العام", r.status)}
     ${row("محور الملاحظات", r.noteType)}
     ${row("تفاصيل الملاحظة", r.noteText)}
@@ -1337,7 +1337,7 @@ function pdfDoc(r){
       ${cell("يوم الزيارة", weekdayAr(r.date))}
       ${cell("نوع الزيارة", r.visitType)}
       ${cell("مستوى المدرسة", r.level)}
-      ${cell("المرحلة", r.stage)}
+      ${cell("نتيجة التقويم", r.stage)}
       ${cell("سبب الزيارة", r.reason)}
       ${cell("اسم المشرف", r.supervisor || CONFIG.supervisorName)}
       ${r.status ? `<div class="c"><div class="k">الوصف العام</div>
