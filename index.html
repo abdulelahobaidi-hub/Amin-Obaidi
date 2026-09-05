@@ -256,6 +256,13 @@ input.bad,select.bad{border-color:var(--danger);box-shadow:0 0 0 3px rgba(179,69
 .rv .k{font-size:.76rem;color:var(--gray-soft);margin-bottom:3px}
 .rv .v{font-size:.93rem;white-space:pre-wrap;line-height:1.8}
 
+.dbalert{
+  display:none; background:var(--danger-bg); color:var(--danger); border-bottom:1px solid #F0D5D2;
+  padding:13px 22px; font-size:.88rem; line-height:1.7; position:sticky; top:0; z-index:40;
+}
+.dbalert.on{display:block}
+.dbalert b{display:block;font-weight:600;margin-bottom:2px}
+.dbalert code{background:#fff;border:1px solid #EED9D6;border-radius:5px;padding:1px 6px;font-size:.85em}
 .toast{
   position:fixed;bottom:26px;inset-inline-start:26px;background:var(--teal-ink);color:#fff;
   padding:13px 20px;border-radius:12px;box-shadow:0 16px 40px -14px rgba(0,0,0,.5);
@@ -317,6 +324,7 @@ input.bad,select.bad{border-color:var(--danger);box-shadow:0 0 0 3px rgba(179,69
 
 <!-- ============ التطبيق ============ -->
 <div id="app">
+<div id="dbAlert" class="dbalert"></div>
 <div class="shell">
   <aside class="rail">
     <div class="rail-top">
@@ -718,8 +726,10 @@ async function initFirebase(){
 
 function setMode(){
   const cloud = S.mode === "cloud";
-  $("#modeTxt").textContent = cloud ? "متصل بقاعدة البيانات" : "وضع محلي — هذا المتصفح فقط";
-  $("#modeChip").querySelector(".dot").classList.toggle("warn", !cloud);
+  const bad = !!S.dbError;
+  $("#modeTxt").textContent = bad ? "تعذّر الوصول للبيانات"
+    : cloud ? "متصل بقاعدة البيانات" : "وضع محلي — هذا المتصفح فقط";
+  $("#modeChip").querySelector(".dot").classList.toggle("warn", !cloud || bad);
 }
 function loginError(m){
   const e = $("#loginErr");
@@ -750,13 +760,28 @@ function watchCloud(){
   onSnapshot(query(collection(fb.db, "schools"), orderBy("name")), snap => {
     S.schools = snap.docs.map(d => ({ id:d.id, ...d.data() }));
     fillSelects(); render();
-  }, e => toast("تعذّر جلب المدارس: " + e.message, true));
+  }, e => dbFail(e));
 
   onSnapshot(query(collection(fb.db, "reports"), orderBy("date","desc")), snap => {
     S.reports = snap.docs.map(d => ({ id:d.id, ...d.data() }));
     render();
-  }, e => toast("تعذّر جلب التقارير: " + e.message, true));
+  }, e => dbFail(e));
 }
+// يظهر سبب فشل القراءة بدل تركه في رسالة عابرة
+function dbFail(e){
+  S.dbError = e.code || e.message || "";
+  const box = $("#dbAlert");
+  const perm = String(S.dbError).includes("permission");
+  box.innerHTML = perm
+    ? `<b>قاعدة البيانات ترفض القراءة لهذا الحساب.</b>
+       القواعد المنشورة في Firestore لا تتضمن بريدك. افتح
+       <code>Firestore Database ← Rules</code> والصق النسخة المحدثة من
+       <code>firestore.rules</code> ثم اضغط Publish.`
+    : `<b>تعذّر الوصول إلى قاعدة البيانات.</b> ${esc(e.message || S.dbError)}`;
+  box.classList.add("on");
+  setMode();
+}
+
 function loadLocal(){
   S.schools = LS.get("schools", []);
   S.reports = LS.get("reports", []);
@@ -976,7 +1001,12 @@ function editReport(id){
 $("#schForm").addEventListener("submit", async e => {
   e.preventDefault();
   const n = $("#sName").value;
-  if(await addSchool(n)){ $("#sName").value = ""; toast("أُضيفت المدرسة"); }
+  try{
+    if(await addSchool(n)){ $("#sName").value = ""; toast("أُضيفت المدرسة"); }
+  }catch(err){
+    dbFail(err);
+    toast("تعذّر حفظ المدرسة: " + (err.message || err.code), true);
+  }
   $("#sName").focus();
 });
 $("#btnBulk").onclick = () => {
