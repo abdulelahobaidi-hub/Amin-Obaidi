@@ -142,6 +142,7 @@ input[type=text],input[type=date],input[type=search],select,textarea{
 select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4.5L6 8.5L10 4.5' stroke='%236B6E72' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat:no-repeat;background-position:left 13px center;padding-inline-start:34px}
 textarea{resize:vertical;min-height:96px;line-height:1.75}
+select:disabled{background-color:#F4F7F6;color:var(--gray-soft);cursor:not-allowed}
 input:focus,select:focus,textarea:focus{outline:0;border-color:var(--teal);box-shadow:0 0 0 3px rgba(0,158,143,.13)}
 input.bad,select.bad{border-color:var(--danger);box-shadow:0 0 0 3px rgba(179,69,60,.1)}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
@@ -461,7 +462,8 @@ input.bad,select.bad{border-color:var(--danger);box-shadow:0 0 0 3px rgba(179,69
             </div>
             <div class="fld">
               <label class="f" for="rStage">المرحلة</label>
-              <select id="rStage"></select>
+              <select id="rStage" disabled></select>
+              <div class="hint" id="stageHint">اختر الدورة أولاً</div>
             </div>
           </div>
           <div class="fld">
@@ -832,6 +834,7 @@ function fillSelects(){
   $("#rType").innerHTML   = opts(VISIT_TYPES, "اختر النوع");
   $("#rLevel").innerHTML  = opts(LEVELS, "غير محدد");
   $("#rStage").innerHTML  = opts(STAGES, "غير محدد");
+  syncStage();
   $("#rReason").innerHTML = opts(REASONS, "اختر السبب");
   $("#rStatus").innerHTML = opts(STATUSES, "غير محدد");
   $("#rNote").innerHTML   = opts(NOTES, "غير محدد");
@@ -889,6 +892,18 @@ function readForm(){
     supervisor: S.user?.name || CONFIG.supervisorName
   };
 }
+// المرحلة فرع من الدورة: نفس الخيارات الأربعة تحت كل دورة،
+// وتبقى مقفلة حتى تُختار الدورة
+function syncStage(){
+  const has = !!$("#rLevel").value;
+  const st = $("#rStage");
+  st.disabled = !has;
+  if(!has) st.value = "";
+  const hint = $("#stageHint");
+  if(hint) hint.style.display = has ? "none" : "block";
+}
+$("#rLevel").addEventListener("change", syncStage);
+
 function resetForm(){
   $("#repForm").reset();
   $("#rId").value = "";
@@ -940,6 +955,7 @@ function editReport(id){
   $("#rDate").value = r.date || "";
   $("#rType").value = r.visitType || "";
   $("#rLevel").value = r.level || "";
+  syncStage();
   $("#rStage").value = r.stage || "";
   $("#rReason").value = r.reason || "";
   $("#rStatus").value = r.status || "";
