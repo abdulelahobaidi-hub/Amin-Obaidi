@@ -363,6 +363,7 @@ input.bad,select.bad{border-color:var(--danger);box-shadow:0 0 0 3px rgba(179,69
         <div class="fw"><label>المدرسة</label><select id="fSchool"></select></div>
         <div class="fw"><label>سبب الزيارة</label><select id="fReason"></select></div>
         <div class="fw"><label>مستوى المدرسة</label><select id="fLevel"></select></div>
+        <div class="fw"><label>المرحلة</label><select id="fStage"></select></div>
         <button class="btn ghost sm" id="btnClearF">مسح التصفية</button>
       </div>
 
@@ -402,6 +403,19 @@ input.bad,select.bad{border-color:var(--danger);box-shadow:0 0 0 3px rgba(179,69
 
       <div class="charts">
         <div class="card pad chart">
+          <h4>مراحل تقدم المدارس</h4>
+          <div class="cap">توزيع الزيارات على مراحل التقدم</div>
+          <div class="hbars" id="chStages"></div>
+        </div>
+        <div class="card pad chart">
+          <h4>مستوى المدرسة</h4>
+          <div class="cap">توزيع الزيارات على الدورتين</div>
+          <div class="hbars" id="chLevels"></div>
+        </div>
+      </div>
+
+      <div class="charts">
+        <div class="card pad chart">
           <h4>أكثر المدارس زيارة</h4>
           <div class="cap">أعلى عشر مدارس من حيث عدد الزيارات</div>
           <div class="rank" id="chTop"></div>
@@ -436,7 +450,7 @@ input.bad,select.bad{border-color:var(--danger);box-shadow:0 0 0 3px rgba(179,69
               <input type="date" id="rDate">
             </div>
           </div>
-          <div class="grid2">
+          <div class="grid3">
             <div class="fld">
               <label class="f" for="rType">نوع الزيارة <span class="req">*</span></label>
               <select id="rType"></select>
@@ -444,6 +458,10 @@ input.bad,select.bad{border-color:var(--danger);box-shadow:0 0 0 3px rgba(179,69
             <div class="fld">
               <label class="f" for="rLevel">مستوى المدرسة</label>
               <select id="rLevel"></select>
+            </div>
+            <div class="fld">
+              <label class="f" for="rStage">المرحلة</label>
+              <select id="rStage"></select>
             </div>
           </div>
           <div class="fld">
@@ -542,7 +560,14 @@ input.bad,select.bad{border-color:var(--danger);box-shadow:0 0 0 3px rgba(179,69
    إعدادات النظام  —  عدّل هذا الجزء فقط
    ================================================================ */
 const CONFIG = {
-  supervisorName: "الأستاذ أمين عبيدي",
+  supervisorName: "أمين محمد عبيدي",
+  // بيانات الترويسة التي تظهر في تقرير PDF
+  org: {
+    administration: "الإدارة العامة للتعليم بمنطقة المدينة المنورة",
+    department: "إدارة الأداء — قسم الإشراف التربوي",
+    team: "الفريق التنفيذي لقطاع قباء",
+    semester: "الفصل الدراسي الأول"
+  },
   // ضع هنا البريد المسموح له بالدخول (اتركها فارغة للسماح لأي حساب جوجل)
   allowedEmails: [
     "amin77700@gmail.com",      // المشرف التربوي
@@ -573,6 +598,7 @@ const REASONS = [
   "مهمة أخرى"
 ];
 const LEVELS = ["الدورة الأولى", "الدورة الثانية"];
+const STAGES = ["تهيئة", "انطلاق", "تقدم", "تميز"];
 const STATUSES = ["جاهزة للتقويم", "تحتاج دعم", "تحتاج تدخل عاجل"];
 const NOTES = [
   "أبرز فجوة في الجاهزية",
@@ -805,13 +831,15 @@ function fillSelects(){
 
   $("#rType").innerHTML   = opts(VISIT_TYPES, "اختر النوع");
   $("#rLevel").innerHTML  = opts(LEVELS, "غير محدد");
+  $("#rStage").innerHTML  = opts(STAGES, "غير محدد");
   $("#rReason").innerHTML = opts(REASONS, "اختر السبب");
   $("#rStatus").innerHTML = opts(STATUSES, "غير محدد");
   $("#rNote").innerHTML   = opts(NOTES, "غير محدد");
 
   for(const [sel, arr, ph] of [
     ["#fSchool", schoolNames, "كل المدارس"], ["#fReason", REASONS, "كل الأسباب"],
-    ["#fLevel", LEVELS, "كل المستويات"], ["#qSchool", schoolNames, "كل المدارس"],
+    ["#fLevel", LEVELS, "كل المستويات"], ["#fStage", STAGES, "كل المراحل"],
+    ["#qSchool", schoolNames, "كل المدارس"],
     ["#qReason", REASONS, "كل الأسباب"], ["#qStatus", STATUSES, "كل الأوصاف"]
   ]){
     const el = $(sel), v = el.value;
@@ -850,6 +878,7 @@ function readForm(){
     date: $("#rDate").value,
     visitType: $("#rType").value,
     level: $("#rLevel").value,
+    stage: $("#rStage").value,
     reason: $("#rReason").value,
     status: $("#rStatus").value,
     noteType: $("#rNote").value,
@@ -911,6 +940,7 @@ function editReport(id){
   $("#rDate").value = r.date || "";
   $("#rType").value = r.visitType || "";
   $("#rLevel").value = r.level || "";
+  $("#rStage").value = r.stage || "";
   $("#rReason").value = r.reason || "";
   $("#rStatus").value = r.status || "";
   $("#rNote").value = r.noteType || "";
@@ -991,7 +1021,7 @@ function filteredReports(){
   const sc = $("#qSchool").value, rs = $("#qReason").value, st = $("#qStatus").value;
   return S.reports
     .filter(r => (!sc || r.school === sc) && (!rs || r.reason === rs) && (!st || r.status === st))
-    .filter(r => !q || [r.school, r.reason, r.status, r.noteType, r.noteText, r.vision, r.recommendations, r.support]
+    .filter(r => !q || [r.school, r.reason, r.status, r.level, r.stage, r.noteType, r.noteText, r.vision, r.recommendations, r.support]
       .join(" ").toLowerCase().includes(q))
     .slice().sort((a,b) => (b.date || "").localeCompare(a.date || ""));
 }
@@ -1025,18 +1055,20 @@ function renderReports(){
         <td><span class="tag t-line">${esc(r.visitType || "—")}</span></td>
         <td>${esc(r.reason || "—")}</td>
         <td>${c ? `<span class="tag ${c.css}">${esc(r.status)}</span>` : "—"}</td>
-        <td style="color:var(--gray)">${esc(r.level || "—")}</td>
+        <td style="color:var(--gray)">${esc(r.level || "—")}${r.stage ? ` · ${esc(r.stage)}` : ""}</td>
         <td><div class="acts">
           <button class="icon-btn" data-view="${esc(r.id)}" title="عرض"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
           <button class="icon-btn" data-edit="${esc(r.id)}" title="تعديل"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 013 3L12 15l-4 1 1-4z"/></svg></button>
+          <button class="icon-btn" data-pdf="${esc(r.id)}" title="تصدير PDF"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M9 15h6M9 18h4"/></svg></button>
           <button class="icon-btn" data-word="${esc(r.id)}" title="تصدير وورد"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></button>
           <button class="icon-btn dgr" data-del="${esc(r.id)}" title="حذف"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg></button>
         </div></td></tr>`;
     }).join("") + `</tbody></table>`;
 }
 $("#repList").addEventListener("click", async e => {
-  const b = e.target.closest("button[data-view],button[data-edit],button[data-del],button[data-word]");
+  const b = e.target.closest("button[data-view],button[data-edit],button[data-del],button[data-word],button[data-pdf]");
   if(!b) return;
+  if(b.dataset.pdf) return exportPDF(S.reports.find(r => r.id === b.dataset.pdf));
   if(b.dataset.view) return viewReport(b.dataset.view);
   if(b.dataset.edit) return editReport(b.dataset.edit);
   if(b.dataset.word) return exportWord([S.reports.find(r => r.id === b.dataset.word)]);
@@ -1066,6 +1098,7 @@ function viewReport(id){
       <div class="rv">
         ${item("سبب الزيارة", r.reason)}
         ${item("مستوى المدرسة", r.level)}
+        ${item("المرحلة", r.stage)}
         ${item("محور الملاحظات", r.noteType)}
         ${item("المشرف", r.supervisor)}
         ${item("تفاصيل الملاحظة", r.noteText, true)}
@@ -1075,7 +1108,8 @@ function viewReport(id){
       </div>
     </div>
     <div class="modal-f">
-      <button class="btn" data-word2="${esc(r.id)}"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> تصدير وورد</button>
+      <button class="btn" data-pdf2="${esc(r.id)}"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M9 15h6M9 18h4"/></svg> تصدير PDF</button>
+      <button class="btn ghost" data-word2="${esc(r.id)}"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> تصدير وورد</button>
       <button class="btn ghost" data-edit2="${esc(r.id)}">تعديل</button>
       <button class="btn ghost" data-close>إغلاق</button>
     </div>`;
@@ -1089,6 +1123,8 @@ function closeModal(){
 $("#ov").addEventListener("click", e => {
   if(e.target.id === "ov" || e.target.closest("[data-close]")) return closeModal();
   const w = e.target.closest("[data-word2]"), ed = e.target.closest("[data-edit2]");
+  const pf = e.target.closest("[data-pdf2]");
+  if(pf) exportPDF(S.reports.find(r => r.id === pf.dataset.pdf2));
   if(w) exportWord([S.reports.find(r => r.id === w.dataset.word2)]);
   if(ed){ closeModal(); editReport(ed.dataset.edit2); }
 });
@@ -1111,6 +1147,7 @@ function wordBlock(r){
     ${row("نوع الزيارة", r.visitType)}
     ${row("سبب الزيارة", r.reason)}
     ${row("مستوى المدرسة", r.level)}
+    ${row("المرحلة", r.stage)}
     ${row("الوصف العام", r.status)}
     ${row("محور الملاحظات", r.noteType)}
     ${row("تفاصيل الملاحظة", r.noteText)}
@@ -1149,23 +1186,186 @@ function exportWord(reports, title){
 $("#btnExpList").onclick = () => exportWord(filteredReports());
 $("#btnExpAll").onclick  = () => exportWord(dashReports(), "تقارير الزيارات المدرسية");
 
+
+/* ================================================================
+   تصدير PDF — صفحة واحدة عبر نافذة الطباعة
+   ================================================================ */
+function weekdayAr(iso){
+  if(!iso) return "";
+  try{ return new Intl.DateTimeFormat("ar", { weekday:"long" }).format(new Date(iso + "T00:00:00")); }
+  catch{ return ""; }
+}
+function hijriYear(d){
+  try{
+    const y = new Intl.DateTimeFormat("en-u-ca-islamic-umalqura-nu-latn", { year:"numeric" }).format(d);
+    return (y.match(/\d+/) || [""])[0] + "هـ";
+  }catch{ return ""; }
+}
+function refNo(r){
+  const day = (r.date || "").replace(/-/g, "") || "00000000";
+  const same = S.reports.filter(x => x.date === r.date)
+    .sort((a,b) => (a.createdAt || "").localeCompare(b.createdAt || ""));
+  const i = Math.max(0, same.findIndex(x => x.id === r.id)) + 1;
+  return `VIS-${day}-${String(i).padStart(4, "0")}`;
+}
+
+function pdfDoc(r){
+  const O = CONFIG.org || {};
+  const now = new Date();
+  const cell = (k, v) => v ? `<div class="c"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div></div>` : "";
+  const sec = (n, t, body) => body ? `<section><h2><i>${n}</i>${esc(t)}</h2>${body}</section>` : "";
+  const para = t => t ? `<div class="tx">${esc(t).replace(/\n/g, "<br>")}</div>` : "";
+  const sc = STATUS_COLOR[r.status];
+
+  const notes = (r.noteType || r.noteText)
+    ? (r.noteType ? `<div class="sub">${esc(r.noteType)}</div>` : "") + para(r.noteText)
+    : "";
+
+  return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
+<title>تقرير_زيارة_${esc((r.school || "مدرسة").replace(/\s+/g, "_"))}_${esc(r.date || "")}</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  @page{ size:A4; margin:0 }
+  :root{ --fs:10.5pt; --teal:#009E8F; --deep:#0A4F4A; --ink:#17211F; --gray:#6B6E72; --line:#D6E3E1; --mint:#EFF7F6 }
+  *{ box-sizing:border-box; margin:0; padding:0 }
+  html,body{ -webkit-print-color-adjust:exact; print-color-adjust:exact }
+  body{ font-family:'IBM Plex Sans Arabic','Sakkal Majalla','Segoe UI',Tahoma,sans-serif; color:var(--ink); font-size:var(--fs); line-height:1.65 }
+  #page{ width:210mm; height:297mm; padding:13mm 12mm 11mm; overflow:hidden; display:flex; flex-direction:column }
+  header{ display:flex; align-items:flex-start; justify-content:space-between; gap:14px; padding-bottom:9px }
+  .brand{ display:flex; gap:13px; align-items:flex-start; min-width:0 }
+  .brand img{ width:24mm; height:auto; flex:none }
+  .brand .t1{ font-weight:700; color:var(--deep); font-size:1.05em; line-height:1.45 }
+  .brand .t2{ color:var(--gray); font-size:.85em; line-height:1.5 }
+  .year{ border:1px solid var(--line); border-radius:7px; padding:6px 13px; text-align:center; background:var(--mint); flex:none }
+  .year b{ display:block; color:var(--deep); font-size:1em }
+  .year span{ font-size:.72em; color:var(--gray); white-space:nowrap }
+  .rule{ height:3px; background:linear-gradient(90deg,var(--deep),var(--teal)); border-radius:2px }
+  .title{ text-align:center; margin:11px 0 4px }
+  .title h1{ font-size:1.5em; color:var(--deep); font-weight:700; letter-spacing:-.3px }
+  .ref{ display:inline-block; margin-top:5px; unicode-bidi:isolate; font-size:.76em; color:var(--gray); border:1px solid var(--line); border-radius:20px; padding:2px 12px }
+  main{ flex:1; min-height:0 }
+  section{ margin-top:11px; break-inside:avoid }
+  h2{ display:flex; align-items:center; gap:8px; font-size:1.02em; color:var(--deep); font-weight:600; margin-bottom:7px }
+  h2 i{ width:17px; height:17px; border-radius:50%; background:var(--teal); color:#fff; font-style:normal;
+        font-size:.72em; display:flex; align-items:center; justify-content:center; flex:none; font-weight:600 }
+  h2::after{ content:""; flex:1; height:1px; background:var(--line) }
+  .grid{ display:grid; grid-template-columns:repeat(3,1fr); border:1px solid var(--line); border-radius:8px; overflow:hidden }
+  .c{ padding:7px 11px; border-inline-start:1px solid var(--line); border-block-start:1px solid var(--line) }
+  .grid .c:nth-child(-n+3){ border-block-start:0 }
+  .grid .c:nth-child(3n+1){ border-inline-start:0 }
+  .k{ font-size:.72em; color:var(--gray); line-height:1.5 }
+  .v{ font-weight:600; line-height:1.55 }
+  .badge{ display:inline-block; padding:1px 12px; border-radius:20px; color:#fff; font-weight:600; font-size:.95em }
+  .sub{ font-weight:600; color:var(--deep); margin-bottom:3px }
+  .tx{ text-align:justify; background:#FBFCFC; border:1px solid var(--line); border-radius:8px; padding:8px 11px; line-height:1.85 }
+  footer{ margin-top:12px; padding-top:9px; border-top:1px solid var(--line);
+          display:flex; align-items:flex-end; justify-content:space-between; gap:16px }
+  .sign{ text-align:right }
+  .sign .lb{ font-size:.72em; color:var(--gray) }
+  .sign .nm{ font-weight:700; color:var(--deep); font-size:1.05em; margin-top:1px }
+  .sign .dt{ font-size:.75em; color:var(--gray); margin-top:3px }
+  .org{ text-align:left; font-size:.7em; color:var(--gray); line-height:1.6 }
+</style></head><body>
+<div id="page"><div id="sheet">
+  <header>
+    <div class="brand">
+      <img src="${LOGO}" alt="">
+      <div>
+        <div class="t1">${esc(O.administration || "")}</div>
+        <div class="t2">${esc(O.department || "")}<br>${esc(O.team || "")}</div>
+      </div>
+    </div>
+    <div class="year"><b>${hijriYear(now)}</b><span>${esc(O.semester || "")}</span></div>
+  </header>
+  <div class="rule"></div>
+
+  <div class="title">
+    <h1>تقرير زيارة مدرسية</h1>
+    <div class="ref">الرقم المرجعي: <span dir="ltr">${refNo(r)}</span></div>
+  </div>
+
+  <main>
+    ${sec("١", "بيانات الزيارة", `<div class="grid">
+      ${cell("اسم المدرسة", r.school)}
+      ${cell("تاريخ الزيارة", fmtDate(r.date))}
+      ${cell("يوم الزيارة", weekdayAr(r.date))}
+      ${cell("نوع الزيارة", r.visitType)}
+      ${cell("مستوى المدرسة", r.level)}
+      ${cell("المرحلة", r.stage)}
+      ${cell("سبب الزيارة", r.reason)}
+      ${cell("اسم المشرف", r.supervisor || CONFIG.supervisorName)}
+      ${r.status ? `<div class="c"><div class="k">الوصف العام</div>
+         <div class="v"><span class="badge" style="background:${sc ? sc.hex : "#6B6E72"}">${esc(r.status)}</span></div></div>` : ""}
+    </div>`)}
+    ${sec("٢", "الملاحظات", notes)}
+    ${sec("٣", "المرئيات", para(r.vision))}
+    ${sec("٤", "التوصيات", para(r.recommendations))}
+    ${sec("٥", "الدعم المقدم", para(r.support))}
+  </main>
+
+  <footer>
+    <div class="sign">
+      <div class="lb">المشرف التربوي</div>
+      <div class="nm">${esc(r.supervisor || CONFIG.supervisorName)}</div>
+      <div class="dt">تاريخ الإصدار: ${fmtDate(now.toISOString().slice(0,10))}</div>
+    </div>
+    <div class="org">${esc(O.administration || "")}<br>${esc(O.department || "")}</div>
+  </footer>
+</div></div>
+<script>
+  (function(){
+    function fit(){
+      var page = document.getElementById("page"), sheet = document.getElementById("sheet");
+      var limit = page.clientHeight - 2;
+      var fs = 10.5;
+      while(sheet.scrollHeight > limit && fs > 6.6){
+        fs -= 0.25;
+        document.documentElement.style.setProperty("--fs", fs + "pt");
+      }
+    }
+    if(document.fonts && document.fonts.ready) document.fonts.ready.then(fit).catch(fit);
+    else fit();
+  })();
+<\/script>
+</body></html>`;
+}
+
+function exportPDF(r){
+  if(!r) return;
+  const prev = document.getElementById("pdfFrame");
+  if(prev) prev.remove();
+  const f = document.createElement("iframe");
+  f.id = "pdfFrame";
+  f.setAttribute("aria-hidden", "true");
+  f.style.cssText = "position:fixed;inset-inline-end:0;bottom:0;width:1px;height:1px;opacity:0;border:0;pointer-events:none";
+  f.srcdoc = pdfDoc(r);
+  f.onload = () => setTimeout(() => {
+    try{ f.contentWindow.focus(); f.contentWindow.print(); }
+    catch(e){ toast("تعذّر فتح نافذة الطباعة", true); }
+  }, 700);
+  document.body.appendChild(f);
+  toast("اختر «حفظ كملف PDF» من نافذة الطباعة");
+}
+
 /* ================================================================
    لوحة المعلومات
    ================================================================ */
-["#fFrom","#fTo","#fSchool","#fReason","#fLevel"].forEach(s => $(s).addEventListener("input", renderDash));
+["#fFrom","#fTo","#fSchool","#fReason","#fLevel","#fStage"].forEach(s => $(s).addEventListener("input", renderDash));
 $("#btnClearF").onclick = () => {
-  ["#fFrom","#fTo","#fSchool","#fReason","#fLevel"].forEach(s => $(s).value = "");
+  ["#fFrom","#fTo","#fSchool","#fReason","#fLevel","#fStage"].forEach(s => $(s).value = "");
   renderDash();
 };
 function dashReports(){
   const f = $("#fFrom").value, t = $("#fTo").value;
-  const sc = $("#fSchool").value, rs = $("#fReason").value, lv = $("#fLevel").value;
+  const sc = $("#fSchool").value, rs = $("#fReason").value;
+  const lv = $("#fLevel").value, sg = $("#fStage").value;
   return S.reports.filter(r =>
     (!f  || (r.date || "") >= f) &&
     (!t  || (r.date || "") <= t) &&
     (!sc || r.school === sc) &&
     (!rs || r.reason === rs) &&
-    (!lv || r.level === lv));
+    (!lv || r.level === lv) &&
+    (!sg || r.stage === sg));
 }
 const countBy = (arr, key) => arr.reduce((m, r) => {
   const k = r[key];
@@ -1253,6 +1453,8 @@ function renderDash(){
   }
 
   hbars("#chReasons", countBy(R, "reason"), REASONS);
+  hbars("#chStages", countBy(R, "stage"), STAGES);
+  hbars("#chLevels", countBy(R, "level"), LEVELS);
   hbars("#chNotes", countBy(R, "noteType"), NOTES);
 
   /* أكثر المدارس زيارة */
