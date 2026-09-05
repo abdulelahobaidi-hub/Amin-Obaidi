@@ -1,0 +1,27 @@
+rules_version = '2';
+
+// قواعد حماية قاعدة البيانات — استبدل البريد أدناه ببريد المشرف
+// ثم الصق الملف في: Firestore Database ← Rules ← Publish
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSupervisor() {
+      return request.auth != null
+          && request.auth.token.email_verified == true
+          && request.auth.token.email == "amin@gmail.com";
+    }
+
+    match /schools/{doc} {
+      allow read, write: if isSupervisor();
+    }
+
+    match /reports/{doc} {
+      allow read, write: if isSupervisor();
+    }
+
+    // أي مسار آخر مغلق
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
