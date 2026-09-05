@@ -1,22 +1,26 @@
 rules_version = '2';
 
-// قواعد حماية قاعدة البيانات — استبدل البريد أدناه ببريد المشرف
-// ثم الصق الملف في: Firestore Database ← Rules ← Publish
+// قواعد حماية قاعدة البيانات لمشروع amin-obaidi
+// الصق محتوى هذا الملف في: Firestore Database ← Rules ← Publish
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isSupervisor() {
+    // الحسابات المصرح لها: المشرف التربوي ومسؤول الصيانة
+    function isAllowed() {
       return request.auth != null
           && request.auth.token.email_verified == true
-          && request.auth.token.email == "amin@gmail.com";
+          && request.auth.token.email in [
+               "amin77700@gmail.com",
+               "abdulelah.obaidi@gmail.com"
+             ];
     }
 
     match /schools/{doc} {
-      allow read, write: if isSupervisor();
+      allow read, write: if isAllowed();
     }
 
     match /reports/{doc} {
-      allow read, write: if isSupervisor();
+      allow read, write: if isAllowed();
     }
 
     // أي مسار آخر مغلق
